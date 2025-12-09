@@ -14,7 +14,7 @@ router.get("/user/profile/:id", isAuthenticated, async (req, res) => {
   //   console.log("USER", getUser);
 
   try {
-    const getUserProfile = await User.findById(id);
+    const getUserProfile = await User.findById(id).select("-salt -hash");
     if (!getUserProfile)
       return res.status(400).json({ message: "User not found !" });
 
@@ -54,7 +54,7 @@ router.put("/user/:id", isAuthenticated, async (req, res) => {
 
   try {
     // FIND USER BY USER ID
-    const userUpdate = await User.findById(id);
+    const userUpdate = await User.findById(id).select("-salt -hash");
     if (!userUpdate)
       return res.status(400).json({ message: "User not found !" });
 
@@ -99,7 +99,7 @@ router.put("/user/:id", isAuthenticated, async (req, res) => {
 
     res.status(201).json({
       message: "User successfully updated.",
-      user: { account: { username: userUpdate.account.username } },
+      user: userUpdate,
     });
   } catch (error) {
     res.status(500).json({
@@ -119,7 +119,7 @@ router.put(
     const authUserToken = req.user.token;
     try {
       // FIND USER BY USER ID
-      const userAvatarUpload = await User.findById(id);
+      const userAvatarUpload = await User.findById(id).select("-salt -hash");
       if (!userAvatarUpload)
         return res.status(400).json({ message: "User not found !" });
 
@@ -174,9 +174,11 @@ router.get("/user", isAuthenticated, async (req, res) => {
     let getLimit = limit || 10;
     if (page) getSkip = getLimit * page - 10;
 
-    const getUser = await User.find({ account: { username: username } })
-      .limit(getLimit)
-      .skip(getSkip);
+    const getUser = await User.find({ account: { username: username } }).select(
+      "-salt -hash -token -fullname -email"
+    );
+    // .limit(getLimit)
+    // .skip(getSkip);
 
     res.status(201).json({ user: getUser });
   } catch (error) {
@@ -192,7 +194,9 @@ router.get("/user/:id", isAuthenticated, async (req, res) => {
   const { id } = req.params;
 
   try {
-    const getUserById = await User.findById(id);
+    const getUserById = await User.findById(id).select(
+      "-salt -hash -token -fullname -email"
+    );
     if (!getUserById)
       return res.status(400).json({ message: "User not found !" });
 
@@ -212,7 +216,7 @@ router.delete("/user/:id", isAuthenticated, async (req, res) => {
   // console.log("TOKEN", authUserToken);
 
   try {
-    const getUser = await User.findById(id);
+    const getUser = await User.findById(id).select("-salt -hash");
     if (!getUser) return res.status(400).json({ message: "User not found !" });
 
     // CHECK IF CONNECTED USER IS THE GOOD ONE
