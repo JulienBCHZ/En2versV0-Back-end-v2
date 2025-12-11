@@ -10,7 +10,7 @@ router.get("/books", async (req, res) => {
     if (!q) {
       return res
         .status(400)
-        .json({ error: 'Le paramètre de recherche "q" est requis' });
+        .json({ error: "The search parameter ‘q’ is required." });
     }
 
     const response = await axios.get("https://openlibrary.org/search.json", {
@@ -24,7 +24,7 @@ router.get("/books", async (req, res) => {
     const books = response.data.docs.map((book) => ({
       key: book.key,
       title: book.title,
-      author: book.author_name ? book.author_name[0] : "Auteur inconnu",
+      author: book.author_name ? book.author_name[0] : "Unknown author.",
       firstPublishYear: book.first_publish_year,
       isbn: book.isbn ? book.isbn[0] : null,
       coverId: book.cover_i,
@@ -39,10 +39,8 @@ router.get("/books", async (req, res) => {
       books: books,
     });
   } catch (error) {
-    console.error("Erreur Open Library:", error.message);
-    res
-      .status(500)
-      .json({ error: "Erreur lors de la récupération des livres" });
+    console.error("Error Open Library:", error.message);
+    res.status(500).json({ error: "Error while retrieving the books." });
   }
 });
 
@@ -76,9 +74,7 @@ router.get("/books/subject/:subject", async (req, res) => {
     });
   } catch (error) {
     console.error("Erreur Open Library:", error.message);
-    res
-      .status(500)
-      .json({ error: "Erreur lors de la récupération des livres" });
+    res.status(500).json({ error: "Error while retrieving the books." });
   }
 });
 
@@ -94,7 +90,7 @@ router.get("/books/:workId", async (req, res) => {
     res.json(response.data);
   } catch (error) {
     console.error("Erreur Open Library:", error.message);
-    res.status(500).json({ error: "Erreur lors de la récupération du livre" });
+    res.status(500).json({ error: "Error while retrieving the book." });
   }
 });
 

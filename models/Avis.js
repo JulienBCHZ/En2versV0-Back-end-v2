@@ -1,3 +1,4 @@
+// models/Avis.js
 const mongoose = require("mongoose");
 
 const avisSchema = new mongoose.Schema(
@@ -7,26 +8,50 @@ const avisSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-
+    livre: {
+      bookKey: {
+        type: String,
+        required: true,
+        // Exemple : "/works/OL123456W"
+      },
+      title: {
+        type: String,
+        required: true,
+      },
+      author: {
+        type: String,
+        default: "Unknown author.",
+      },
+      coverUrl: {
+        type: String,
+        default: null,
+      },
+    },
     contenu: {
       type: String,
+      minlength: 0,
+      maxlength: 5000,
     },
     note: {
       type: Number,
-      required: [true, "La note est requise"],
-      min: [0.5, "La note minimum est 0.5"],
-      max: [5, "La note maximum est 5"],
+      required: true,
+      min: 0.5,
+      max: 5,
     },
     contientSpoiler: {
       type: Boolean,
       default: false,
     },
+    likes: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
   },
   {
     timestamps: true,
   }
 );
 
-const Avis = mongoose.model("Avis", avisSchema);
-
-module.exports = Avis;
+module.exports = mongoose.model("Avis", avisSchema);

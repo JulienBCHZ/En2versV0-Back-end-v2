@@ -32,7 +32,7 @@ router.get("/post/:id", isAuthenticated, async (req, res) => {
   try {
     const courrier = await Courrier.findById(req.params.id).populate("auteur");
     if (!courrier) {
-      return res.status(404).json({ message: "Courrier non trouvé" });
+      return res.status(404).json({ message: "Mail not found." });
     }
     res.status(200).json(courrier);
   } catch (error) {
@@ -46,12 +46,12 @@ router.put("/post/:id", isAuthenticated, async (req, res) => {
     const courrier = await Courrier.findById(req.params.id);
 
     if (!courrier) {
-      return res.status(404).json({ message: "Courrier non trouvé" });
+      return res.status(404).json({ message: "Mail not found." });
     }
 
     //Vérifier que l'utilisateur est l'auteur
     if (courrier.auteur.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: "Non autorisé" });
+      return res.status(403).json({ message: "Unauthorized." });
     }
 
     //Ne mettre à jour que le contenu (pas l'auteur)
@@ -69,16 +69,16 @@ router.delete("/post/:id", isAuthenticated, async (req, res) => {
     const courrier = await Courrier.findById(req.params.id);
 
     if (!courrier) {
-      return res.status(404).json({ message: "Courrier non trouvé" });
+      return res.status(404).json({ message: "Mail not found." });
     }
 
     //Vérifier que l'utilisateur est l'auteur
     if (courrier.auteur.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: "Non autorisé" });
+      return res.status(403).json({ message: "Unauthorized." });
     }
 
     await Courrier.findByIdAndDelete(req.params.id);
-    res.status(200).json({ message: "Courrier supprimé" });
+    res.status(200).json({ message: "Mail deleted." });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

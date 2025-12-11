@@ -5,11 +5,11 @@ const courrierSchema = new mongoose.Schema(
     auteur: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: [true, "L'auteur est requis"],
+      required: [true, "The author is required."],
     },
     contenu: {
       type: String,
-      required: [true, "Le contenu est requis"],
+      required: [true, "The content is required."],
     },
   },
   {
