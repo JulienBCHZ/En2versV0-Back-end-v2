@@ -28,7 +28,8 @@ router.post("/deepdive", isAuthenticated, async (req, res) => {
     });
 
     const savedDeepDive = await newDeepDive.save();
-    await savedDeepDive.populate("author", "username email avatar");
+    await savedDeepDive.populate("author", "account.username email account.avatar");
+
 
     res.status(201).json({
       success: true,
@@ -51,7 +52,7 @@ router.get("/deepdive", async (req, res) => {
     const { page = 1, limit = 10 } = req.query;
 
     const deepdives = await DeepDive.find()
-      .populate("author", "username email avatar")
+      .populate("author", "account.username email account.avatar")
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(parseInt(limit));
@@ -83,7 +84,7 @@ router.get("/deepdive/book/:bookKey", async (req, res) => {
     const { page = 1, limit = 10 } = req.query;
 
     const deepdives = await DeepDive.find({ "book.bookKey": bookKey })
-      .populate("author", "username email avatar")
+      .populate("author", "accoount.username email account.avatar")
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(parseInt(limit));
@@ -113,7 +114,7 @@ router.get("/deepdive/:id", async (req, res) => {
   try {
     const deepDive = await DeepDive.findById(req.params.id).populate(
       "author",
-      "username email avatar"
+      "account.username email account.avatar"
     );
 
     if (!deepDive) {
@@ -160,7 +161,7 @@ router.put("/deepdive/:id", isAuthenticated, async (req, res) => {
     if (containsSpoiler !== undefined) deepDive.containsSpoiler = containsSpoiler;
 
     const updated = await deepDive.save();
-    await updated.populate("author", "username email avatar");
+    await updated.populate("author", "account.username email account.avatar");
 
     res.status(200).json({
       success: true,

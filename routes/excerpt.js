@@ -27,7 +27,7 @@ router.post("/excerpt", authMiddleware, async (req, res) => {
     });
 
     const savedExcerpt = await newExcerpt.save();
-    await savedExcerpt.populate("author", "username email avatar");
+    await savedExcerpt.populate("author", "account.username email account.avatar");
 
     res.status(201).json({
       success: true,
@@ -81,7 +81,7 @@ router.get("/excerpt/book/:bookKey", async (req, res) => {
     const { page = 1, limit = 10 } = req.query;
 
     const excerpts = await Excerpt.find({ "book.bookKey": bookKey })
-      .populate("author", "username email avatar")
+      .populate("author", "account.username email account.avatar")
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(parseInt(limit));
@@ -111,7 +111,7 @@ router.get("/excerpt/:id", async (req, res) => {
   try {
     const excerpt = await Excerpt.findById(req.params.id).populate(
       "author",
-      "username email avatar"
+      "account.username email account.avatar"
     );
 
     if (!excerpt) {
@@ -157,7 +157,7 @@ router.put("/excerpt/:id", authMiddleware, async (req, res) => {
     if (content !== undefined) excerpt.content = content;
 
     const updated = await excerpt.save();
-    await updated.populate("author", "username email avatar");
+    await updated.populate("author", "account.username email account.avatar")
 
     res.status(200).json({
       success: true,
