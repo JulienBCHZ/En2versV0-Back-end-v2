@@ -12,7 +12,7 @@ app.use(express.json());
 const authentificationRouter = require("./routes/authentification");
 const userRouter = require("./routes/user");
 const bookRouter = require("./routes/book");
-const avisRouter = require("./routes/avis");
+const reviewsRouter = require("./routes/reviews");
 const courrierRouter = require("./routes/courrier");
 const plusLoinRouter = require("./routes/plusLoin");
 const extraitRouter = require("./routes/extrait");
@@ -34,7 +34,7 @@ app.get("/", (req, res) => {
 app.use(authentificationRouter);
 app.use(userRouter);
 app.use(bookRouter);
-app.use(avisRouter);
+app.use(reviewsRouter);
 app.use(courrierRouter);
 app.use(plusLoinRouter);
 app.use(extraitRouter);
