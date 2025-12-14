@@ -31,7 +31,7 @@ router.post("/reviews", isAuthenticated, async (req, res) => {
     });
 
     await newReview.save();
-    await newReview.populate("author", "username avatar");
+    await newReview.populate("author", "account.username account.avatar")
 
     res.status(201).json({
       message: "Review successfully created.",
@@ -234,7 +234,7 @@ router.put("/reviews/:id", isAuthenticated, async (req, res) => {
     if (containsSpoiler !== undefined) review.containsSpoiler = containsSpoiler;
 
     await review.save();
-    await review.populate("author", "username avatar");
+    await review.populate("author", "account.username account.avatar");
 
     res.status(200).json({
       message: "Review successfully updated.",
