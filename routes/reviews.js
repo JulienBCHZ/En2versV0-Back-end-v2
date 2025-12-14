@@ -171,7 +171,7 @@ router.get("/reviews/user/:userId", async (req, res) => {
     const limitNum = parseInt(limit);
 
     const reviews = await Review.find({ author: req.params.userId })
-      .populate("author", "username avatar")
+      .populate("author", "account.username account.avatar")
       .sort("-createdAt")
       .limit(limitNum)
       .skip((pageNum - 1) * limitNum);
