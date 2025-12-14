@@ -56,7 +56,7 @@ router.get("/reviews", async (req, res) => {
     const limitNum = parseInt(limit);
 
     const reviews = await Review.find()
-      .populate("author", "username avatar")
+      .populate("author", "account.username account.avatar")
       .sort(sort)
       .limit(limitNum)
       .skip((pageNum - 1) * limitNum);
@@ -91,7 +91,7 @@ router.get("/reviews/book", async (req, res) => {
     };
 
     const reviews = await Review.find(query)
-      .populate("author", "username avatar")
+      .populate("author", "account.username account.avatar")
       .sort(sort)
       .limit(limitNum)
       .skip((pageNum - 1) * limitNum);
