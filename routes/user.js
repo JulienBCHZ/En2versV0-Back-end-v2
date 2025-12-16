@@ -5,6 +5,7 @@ const fileUpload = require("express-fileupload");
 const uid2 = require("uid2");
 const SHA256 = require("crypto-js/sha256");
 const encBase64 = require("crypto-js/enc-base64");
+const axios = require("axios");
 
 const isAuthenticated = require("../middleware/isAuthenticated");
 const isPermitted = require("../middleware/isPermitted"); // TO CHECK IF THE USER IS THE GOOD ONE TO ACCESS TO PERSONNAL PAGES
@@ -22,17 +23,70 @@ router.get(
     //   console.log("USER", getUser);
 
     try {
+      // Récupérer le profil utilisateur
       const getUserProfile = await User.findById(id).select(
         "-salt -hash -token"
       );
       if (!getUserProfile)
         return res.status(400).json({ message: "User not found !" });
 
+      // Récupérer les favBooks
+      const favBooks = getUserProfile.favBooks || [];
+
+      // Fonction pour récupérer la cover depuis Open Library
+      const enrichFavBooks = async (books) => {
+        return await Promise.all(
+          Object.values(books).map(async (book) => {
+            try {
+              if (!book.title) return { ...book, coverUrl: null };
+
+              // Requête Open Library pour récupérer le livre par titre et auteur
+              const response = await axios.get(
+                "https://openlibrary.org/search.json",
+                {
+                  params: {
+                    title: book.title,
+                    author: book.author_name,
+                    limit: 1,
+                  },
+                }
+              );
+
+              const doc = response.data.docs[0];
+
+              // Construire l'URL de la couverture si cover_i existe
+              const coverUrl = doc?.cover_i
+                ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg`
+                : null;
+
+              return { ...book, coverUrl };
+            } catch (error) {
+              console.error(
+                "Error fetching cover for",
+                book.title,
+                error.message
+              );
+              return { ...book, coverUrl: null };
+            }
+          })
+        );
+      };
+
+      //Enrichir les favBooks avec coverUrl
+      const enrichedFavBooks = await enrichFavBooks(favBooks);
+
+      //Remplacer les favBooks par la version enrichie
+      const userWithCovers = {
+        ...getUserProfile.toObject(),
+        favBooks: enrichedFavBooks,
+      };
+
       // CHECK IF CONNECTED USER IS THE GOOD ONE
       // if (getUserProfile.token !== authUserToken)
       //   return res.status(401).json({ message: "Unauthorized !" });
 
-      res.status(201).json({ user: getUserProfile });
+      // Envoyer la réponse
+      res.status(201).json({ user: userWithCovers });
     } catch (error) {
       res.status(500).json({
         message: "Something went wrong...",
@@ -41,84 +95,6 @@ router.get(
     }
   }
 );
-
-// UPDATE USER INFO
-router.put("/user/:id", isAuthenticated, isPermitted, async (req, res) => {
-  const {
-    fullname,
-    email,
-    firstBookTitle,
-    firstBookAuthor,
-    secondBookTitle,
-    secondBookAuthor,
-    firstStyle,
-    secondStyle,
-    thirdStyle,
-    birth,
-    genre,
-    country,
-    city,
-    description,
-  } = req.body;
-  const { id } = req.params;
-  // const authUserToken = req.user.token;
-
-  try {
-    // FIND USER BY USER ID
-    const userUpdate = await User.findById(id).select("-salt -hash");
-    if (!userUpdate)
-      return res.status(400).json({ message: "User not found !" });
-
-    // CHECK IF CONNECTED USER IS THE GOOD ONE
-    // if (userUpdate.token !== authUserToken)
-    //   return res.status(401).json({ message: "Unauthorized !" });
-
-    // UPDATE USER INFO
-    if (fullname) userUpdate.fullname = fullname;
-
-    if (email) userUpdate.email = email;
-
-    if (firstBookTitle) userUpdate.favBooks.firstBook.title = firstBookTitle;
-
-    if (firstBookTitle) userUpdate.favBooks.firstBook.title = firstBookTitle;
-
-    if (secondBookTitle) userUpdate.favBooks.secondBook.title = firstBookTitle;
-
-    if (firstBookAuthor)
-      userUpdate.favBooks.firstBook.author_name = firstBookAuthor;
-
-    if (secondBookAuthor)
-      userUpdate.favBooks.secondBook.author_name = secondBookAuthor;
-
-    if (firstStyle) userUpdate.style.firstStyle = firstStyle;
-
-    if (secondStyle) userUpdate.style.secondStyle = secondStyle;
-
-    if (thirdStyle) userUpdate.style.thirdStyle = thirdStyle;
-
-    if (birth) userUpdate.birth = birth;
-
-    if (genre) userUpdate.genre = genre;
-
-    if (country) userUpdate.country = genre;
-
-    if (city) userUpdate.city = city;
-
-    if (description) userUpdate.description = description;
-
-    await userUpdate.save();
-
-    res.status(201).json({
-      message: "User successfully updated.",
-      user: userUpdate,
-    });
-  } catch (error) {
-    res.status(500).json({
-      message: "User hasn't been updated...",
-      errorMessage: error.message,
-    });
-  }
-});
 
 // USER AVATAR UPLOAD
 router.put(
