@@ -13,6 +13,12 @@ const letterSchema = new mongoose.Schema(
       minlength: 0,
       maxlength: 5000,
     },
+    likes: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
   },
   {
     timestamps: true,

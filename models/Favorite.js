@@ -41,7 +41,6 @@ const favoriteSchema = new mongoose.Schema(
   }
 );
 
-// Index pour éviter les doublons (un user ne peut pas ajouter le même livre 2 fois)
 favoriteSchema.index({ user: 1, bookKey: 1 }, { unique: true });
 
 module.exports = mongoose.model("Favorite", favoriteSchema);

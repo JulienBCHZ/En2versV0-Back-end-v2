@@ -28,8 +28,10 @@ router.post("/deepdive", isAuthenticated, async (req, res) => {
     });
 
     const savedDeepDive = await newDeepDive.save();
-    await savedDeepDive.populate("author", "account.username email account.avatar");
-
+    await savedDeepDive.populate(
+      "author",
+      "account.username email account.avatar"
+    );
 
     res.status(201).json({
       success: true,
@@ -62,6 +64,11 @@ router.get("/deepdive", async (req, res) => {
     res.status(200).json({
       success: true,
       data: deepdives,
+      likes: letter.likes,
+      likesCount: letter.likes.length,
+      isLikedByUser: letter.likes.some(
+        (id) => id.toString() === req.user._id.toString()
+      ),
       pagination: {
         currentPage: parseInt(page),
         totalPages: Math.ceil(total / limit),
@@ -94,6 +101,11 @@ router.get("/deepdive/book/:bookKey", async (req, res) => {
     res.status(200).json({
       success: true,
       data: deepdives,
+      likes: letter.likes,
+      likesCount: letter.likes.length,
+      isLikedByUser: letter.likes.some(
+        (id) => id.toString() === req.user._id.toString()
+      ),
       pagination: {
         currentPage: parseInt(page),
         totalPages: Math.ceil(total / limit),
@@ -108,7 +120,41 @@ router.get("/deepdive/book/:bookKey", async (req, res) => {
     });
   }
 });
+// TOGGLE LIKE - Like/Unlike a deepdive
+router.post("/deepdive/:id/like", isAuthenticated, async (req, res) => {
+  try {
+    const deepdive = await Deepdive.findById(req.params.id);
 
+    if (!deepdive) {
+      return res.status(404).json({ message: "deepdive not found." });
+    }
+
+    const userId = req.user._id;
+    const hasLiked = deepdive.likes.some(
+      (id) => id.toString() === userId.toString()
+    );
+
+    if (hasLiked) {
+      // Unlike
+      deepdive.likes = deepdive.likes.filter(
+        (id) => id.toString() !== userId.toString()
+      );
+    } else {
+      // Like
+      deepdive.likes.push(userId);
+    }
+
+    await deepdive.save();
+
+    res.status(200).json({
+      message: hasLiked ? "deepdive unliked." : "deepdive liked.",
+      likesCount: deepdive.likes.length,
+      isLikedByUser: !hasLiked,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
 // READ ONE - Get a DeepDive by ID
 router.get("/deepdive/:id", async (req, res) => {
   try {
@@ -158,7 +204,8 @@ router.put("/deepdive/:id", isAuthenticated, async (req, res) => {
 
     const { content, containsSpoiler } = req.body;
     if (content !== undefined) deepDive.content = content;
-    if (containsSpoiler !== undefined) deepDive.containsSpoiler = containsSpoiler;
+    if (containsSpoiler !== undefined)
+      deepDive.containsSpoiler = containsSpoiler;
 
     const updated = await deepDive.save();
     await updated.populate("author", "account.username email account.avatar");

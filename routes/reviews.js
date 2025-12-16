@@ -14,7 +14,9 @@ router.post("/reviews", isAuthenticated, async (req, res) => {
     }
 
     if (!book || !book.bookKey) {
-      return res.status(400).json({ message: "Book information (bookKey) is required." });
+      return res
+        .status(400)
+        .json({ message: "Book information (bookKey) is required." });
     }
 
     const newReview = new Review({
@@ -31,7 +33,7 @@ router.post("/reviews", isAuthenticated, async (req, res) => {
     });
 
     await newReview.save();
-    await newReview.populate("author", "account.username account.avatar")
+    await newReview.populate("author", "account.username account.avatar");
 
     res.status(201).json({
       message: "Review successfully created.",
@@ -44,7 +46,9 @@ router.post("/reviews", isAuthenticated, async (req, res) => {
         message: "You have already submitted a review for this book.",
       });
     }
-    res.status(500).json({ message: "Error creating review.", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error creating review.", error: error.message });
   }
 });
 
@@ -68,13 +72,54 @@ router.get("/reviews", async (req, res) => {
       totalPages: Math.ceil(total / limitNum),
       currentPage: pageNum,
       total,
+      likes: letter.likes,
+      likesCount: letter.likes.length,
+      isLikedByUser: letter.likes.some(
+        (id) => id.toString() === req.user._id.toString()
+      ),
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Error retrieving reviews.", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error retrieving reviews.", error: error.message });
   }
 });
+// TOGGLE LIKE - Like/Unlike a review
+router.post("/reviews/:id/like", isAuthenticated, async (req, res) => {
+  try {
+    const review = await Review.findById(req.params.id);
 
+    if (!review) {
+      return res.status(404).json({ message: "Review not found." });
+    }
+
+    const userId = req.user._id;
+    const hasLiked = review.likes.some(
+      (id) => id.toString() === userId.toString()
+    );
+
+    if (hasLiked) {
+      // Unlike
+      review.likes = review.likes.filter(
+        (id) => id.toString() !== userId.toString()
+      );
+    } else {
+      // Like
+      review.likes.push(userId);
+    }
+
+    await review.save();
+
+    res.status(200).json({
+      message: hasLiked ? "review unliked." : "review liked.",
+      likesCount: review.likes.length,
+      isLikedByUser: !hasLiked,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
 // GET - Retrieve reviews for a specific book
 router.get("/reviews/book", async (req, res) => {
   try {
@@ -104,10 +149,18 @@ router.get("/reviews/book", async (req, res) => {
       totalPages: Math.ceil(total / limitNum),
       currentPage: pageNum,
       total,
+      likes: letter.likes,
+      likesCount: letter.likes.length,
+      isLikedByUser: letter.likes.some(
+        (id) => id.toString() === req.user._id.toString()
+      ),
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Error retrieving book reviews.", error: error.message });
+    res.status(500).json({
+      message: "Error retrieving book reviews.",
+      error: error.message,
+    });
   }
 });
 
@@ -156,10 +209,18 @@ router.get("/reviews/book/:bookKey/stats", async (req, res) => {
       averageRating: Math.round(averageRating * 10) / 10,
       totalReviews,
       ratingDistribution,
+      likes: letter.likes,
+      likesCount: letter.likes.length,
+      isLikedByUser: letter.likes.some(
+        (id) => id.toString() === req.user._id.toString()
+      ),
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Error retrieving book statistics.", error: error.message });
+    res.status(500).json({
+      message: "Error retrieving book statistics.",
+      error: error.message,
+    });
   }
 });
 
@@ -183,10 +244,18 @@ router.get("/reviews/user/:userId", async (req, res) => {
       totalPages: Math.ceil(total / limitNum),
       currentPage: pageNum,
       total,
+      likes: letter.likes,
+      likesCount: letter.likes.length,
+      isLikedByUser: letter.likes.some(
+        (id) => id.toString() === req.user._id.toString()
+      ),
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Error retrieving user reviews.", error: error.message });
+    res.status(500).json({
+      message: "Error retrieving user reviews.",
+      error: error.message,
+    });
   }
 });
 
@@ -197,7 +266,10 @@ router.get("/reviews/:id", async (req, res) => {
       return res.status(400).json({ message: "Invalid ID." });
     }
 
-    const review = await Review.findById(req.params.id).populate("author", "username avatar");
+    const review = await Review.findById(req.params.id).populate(
+      "author",
+      "username avatar"
+    );
 
     if (!review) {
       return res.status(404).json({ message: "Review not found." });
@@ -206,7 +278,9 @@ router.get("/reviews/:id", async (req, res) => {
     res.status(200).json(review);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Error retrieving review.", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error retrieving review.", error: error.message });
   }
 });
 
@@ -226,7 +300,9 @@ router.put("/reviews/:id", isAuthenticated, async (req, res) => {
     }
 
     if (review.author.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: "Not authorized to edit this review." });
+      return res
+        .status(403)
+        .json({ message: "Not authorized to edit this review." });
     }
 
     if (content !== undefined) review.content = content;
@@ -242,7 +318,9 @@ router.put("/reviews/:id", isAuthenticated, async (req, res) => {
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Error updating review.", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error updating review.", error: error.message });
   }
 });
 
@@ -260,7 +338,9 @@ router.delete("/reviews/:id", isAuthenticated, async (req, res) => {
     }
 
     if (review.author.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: "Not authorized to delete this review." });
+      return res
+        .status(403)
+        .json({ message: "Not authorized to delete this review." });
     }
 
     await Review.findByIdAndDelete(req.params.id);
@@ -268,41 +348,9 @@ router.delete("/reviews/:id", isAuthenticated, async (req, res) => {
     res.status(200).json({ message: "Review successfully deleted." });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Error deleting review.", error: error.message });
-  }
-});
-
-// POST - Like/Unlike a review
-router.post("/reviews/:id/like", isAuthenticated, async (req, res) => {
-  try {
-    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-      return res.status(400).json({ message: "Invalid ID." });
-    }
-
-    const review = await Review.findById(req.params.id);
-    if (!review) {
-      return res.status(404).json({ message: "Review not found." });
-    }
-
-    const userId = req.user._id;
-    const hasLiked = review.likes.includes(userId);
-
-    if (hasLiked) {
-      review.likes = review.likes.filter((id) => id.toString() !== userId.toString());
-    } else {
-      review.likes.push(userId);
-    }
-
-    await review.save();
-
-    res.status(200).json({
-      message: hasLiked ? "Like removed." : "Review liked.",
-      likesCount: review.likes.length,
-      hasLiked: !hasLiked,
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Error updating like.", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error deleting review.", error: error.message });
   }
 });
 

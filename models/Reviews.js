@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-// Définir le sous-schéma pour le livre
+// Define the sub-schema for the book
 const bookSchema = new mongoose.Schema(
   {
     bookKey: {
@@ -20,10 +20,9 @@ const bookSchema = new mongoose.Schema(
       default: null,
     },
   },
-  { _id: false } // Pas besoin d'un _id pour ce sous-document
+  { _id: false } // no _id needed for this sub-document
 );
 
-// Schéma des avis
 const reviewsSchema = new mongoose.Schema(
   {
     author: {
@@ -32,7 +31,7 @@ const reviewsSchema = new mongoose.Schema(
       required: true,
     },
     book: {
-      type: bookSchema, 
+      type: bookSchema,
       required: true,
     },
     content: {
@@ -40,7 +39,7 @@ const reviewsSchema = new mongoose.Schema(
       minlength: 0,
       maxlength: 2000,
     },
-    rating: { 
+    rating: {
       type: Number,
       required: true,
       min: 0.5,
@@ -54,21 +53,18 @@ const reviewsSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-    likes: {
-      type: [mongoose.Schema.Types.ObjectId],
-      ref: "User",
-      default: [],
-    },
+    likes: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
   },
   {
     timestamps: true,
   }
 );
 
-// Empêcher un utilisateur de poster deux fois un avis pour le même livre
-reviewsSchema.index(
-  { author: 1, "book.bookKey": 1 },
-  { unique: true }
-);
+reviewsSchema.index({ author: 1, "book.bookKey": 1 }, { unique: true });
 
 module.exports = mongoose.model("Review", reviewsSchema);
