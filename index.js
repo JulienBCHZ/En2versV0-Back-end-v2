@@ -17,6 +17,7 @@ const letterRouter = require("./routes/letter");
 const deepDiveRouter = require("./routes/deepDive");
 const excerptRouter = require("./routes/excerpt");
 const favoriteRouter = require("./routes/favorite");
+const followRouter = require("./routes/follow");
 
 mongoose.connect(process.env.MONGODB_URI);
 
@@ -40,6 +41,7 @@ app.use(letterRouter);
 app.use(deepDiveRouter);
 app.use(excerptRouter);
 app.use(favoriteRouter);
+app.use(followRouter);
 
 app.all(/.*/, (req, res) => {
   res.status(404).json({ message: "Route does not exist" });

@@ -94,7 +94,7 @@ router.get("/deepdive/book/:bookKey", async (req, res) => {
     const { page = 1, limit = 10 } = req.query;
 
     const deepdives = await DeepDive.find({ "book.bookKey": bookKey })
-      .populate("author", "account.username email account.avatar") // ✅ Corrigé: "account" au lieu de "accoount"
+      .populate("author", "account.username email account.avatar")
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(parseInt(limit));
@@ -128,7 +128,7 @@ router.get("/deepdive/book/:bookKey", async (req, res) => {
 // TOGGLE LIKE - Like/Unlike a deepdive
 router.post("/deepdive/:id/like", isAuthenticated, async (req, res) => {
   try {
-    const deepdive = await DeepDive.findById(req.params.id); // ✅ Corrigé: "DeepDive" au lieu de "Deepdive"
+    const deepdive = await DeepDive.findById(req.params.id);
 
     if (!deepdive) {
       return res.status(404).json({

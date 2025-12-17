@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const Excerpt = require("../models/Excerpt");
-const isAuthenticated = require("../middleware/isAuthenticated"); // ✅ Un seul import
+const isAuthenticated = require("../middleware/isAuthenticated");
 
 // CREATE - Create a new excerpt
 router.post("/excerpt", isAuthenticated, async (req, res) => {
@@ -52,14 +52,14 @@ router.get("/excerpt", async (req, res) => {
     const { page = 1, limit = 10 } = req.query;
 
     const excerpts = await Excerpt.find()
-      .populate("author", "account.username email account.avatar") // ✅ Corrigé
+      .populate("author", "account.username email account.avatar")
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(parseInt(limit));
 
     const total = await Excerpt.countDocuments();
 
-    // ✅ Formater les données avec les informations de likes pour chaque excerpt
+    // Formater les données avec les informations de likes pour chaque excerpt
     const formattedExcerpts = excerpts.map((excerpt) => ({
       ...excerpt.toObject(),
       likesCount: excerpt.likes ? excerpt.likes.length : 0,
@@ -97,7 +97,7 @@ router.get("/excerpt/book/:bookKey", async (req, res) => {
 
     const total = await Excerpt.countDocuments({ "book.bookKey": bookKey });
 
-    // ✅ Formater les données avec les informations de likes pour chaque excerpt
+    // Formater les données avec les informations de likes pour chaque excerpt
     const formattedExcerpts = excerpts.map((excerpt) => ({
       ...excerpt.toObject(),
       likesCount: excerpt.likes ? excerpt.likes.length : 0,
@@ -128,7 +128,7 @@ router.post("/excerpt/:id/like", isAuthenticated, async (req, res) => {
 
     if (!excerpt) {
       return res.status(404).json({
-        success: false, // ✅ Ajouté pour cohérence
+        success: false,
         message: "Excerpt not found.",
       });
     }
@@ -151,7 +151,7 @@ router.post("/excerpt/:id/like", isAuthenticated, async (req, res) => {
     await excerpt.save();
 
     res.status(200).json({
-      success: true, // ✅ Ajouté pour cohérence
+      success: true,
       message: hasLiked ? "Excerpt unliked." : "Excerpt liked.",
       likesCount: excerpt.likes.length,
       isLikedByUser: !hasLiked,
