@@ -64,9 +64,9 @@ router.get("/deepdive", async (req, res) => {
     res.status(200).json({
       success: true,
       data: deepdives,
-      likes: letter.likes,
-      likesCount: letter.likes.length,
-      isLikedByUser: letter.likes.some(
+      likes: deepdive.likes,
+      likesCount: deepdive.likes.length,
+      isLikedByUser: deepdive.likes.some(
         (id) => id.toString() === req.user._id.toString()
       ),
       pagination: {
@@ -101,9 +101,9 @@ router.get("/deepdive/book/:bookKey", async (req, res) => {
     res.status(200).json({
       success: true,
       data: deepdives,
-      likes: letter.likes,
-      likesCount: letter.likes.length,
-      isLikedByUser: letter.likes.some(
+      likes: deepdive.likes,
+      likesCount: deepdive.likes.length,
+      isLikedByUser: deepdive.likes.some(
         (id) => id.toString() === req.user._id.toString()
       ),
       pagination: {
