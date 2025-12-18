@@ -112,7 +112,7 @@ router.put("/user/:id", isAuthenticated, isPermitted, async (req, res) => {
     genre,
     country,
     city,
-    description,
+    userDescription
   } = req.body;
   const { id } = req.params;
   // const authUserToken = req.user.token;
@@ -156,7 +156,7 @@ router.put("/user/:id", isAuthenticated, isPermitted, async (req, res) => {
 
     if (city) userUpdate.city = city;
 
-    if (description) userUpdate.description = description;
+    if (userDescription) userUpdate.userDescription = userDescription;
 
     await userUpdate.save();
 
