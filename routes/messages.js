@@ -3,36 +3,31 @@ const router = express.Router();
 const Message = require("../models/Message");
 const isAuthenticated = require("../middleware/isAuthenticated");
 
-// CREATE MESSAGE
 router.post("/messages", isAuthenticated, async (req, res) => {
   const { newMessage, username } = req.body;
-
   if (!newMessage || !username) {
     return res.status(400).json({ message: "Missing message or username" });
   }
 
   try {
-    const msg = new Message({
+    const newStoredMessage = new Message({
       senderUsername: username,
       text: newMessage,
     });
-
-    await msg.save();
-    res.status(201).json(msg);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+    await newStoredMessage.save();
+    res.status(201).json(newStoredMessage);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 });
 
-// GET ALL MESSAGES
 router.get("/messages/all", isAuthenticated, async (req, res) => {
   try {
-    const messages = await Message.find().sort({ createdAt: 1 });
-    res.json(messages);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+    const msgs = await Message.find().sort({ createdAt: 1 });
+    res.json(msgs);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 });
 
-// ⚠️ UN SEUL EXPORT
 module.exports = router;

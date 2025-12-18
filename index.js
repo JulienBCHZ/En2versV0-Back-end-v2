@@ -3,118 +3,139 @@ require("dotenv").config();
 const mongoose = require("mongoose");
 const cloudinary = require("cloudinary").v2;
 const cors = require("cors");
+const http = require("http");
 
 const app = express();
+
+// -------- Middleware base
 app.use(cors());
-app.use(express.json());
-const server = require("http").createServer(app); // création du type de seveur ici pour socketIO
-const io = require("socket.io")(server, { cors: { origin: "*" } }); // initialisation de socketIO en lui précisant quel server utiliser
+app.use(express.json({ limit: "2mb" }));
 
-// IMPORT DES ROUTES
-const authentificationRouter = require("./routes/authentification");
-const userRouter = require("./routes/user");
-const bookRouter = require("./routes/book");
-const reviewsRouter = require("./routes/reviews");
-const letterRouter = require("./routes/letter");
-const deepDiveRouter = require("./routes/deepDive");
-const excerptRouter = require("./routes/excerpt");
-const favoriteRouter = require("./routes/favorite");
-const followRouter = require("./routes/follow");
-const messagesRouter = require("./routes/messages");
+// -------- Health / Ready
+let mongoReady = false;
 
-mongoose.connect(process.env.MONGODB_URI);
+app.get("/health", (req, res) => res.status(200).json({ ok: true }));
 
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
+app.get("/ready", (req, res) => {
+  // Ready = serveur up + mongo ok
+  if (!mongoReady) return res.status(503).json({ ok: false, mongoReady: false });
+  return res.status(200).json({ ok: true, mongoReady: true });
 });
 
-app.get("/", (req, res) => {
-  res.json({ message: "We are in !" });
-});
+// -------- Cloudinary (safe)
+try {
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+  });
+} catch (e) {
+  console.error("Cloudinary config error:", e?.message);
+}
 
-// ROUTES
-
-app.use(authentificationRouter);
-app.use(userRouter);
-app.use(bookRouter);
-app.use(reviewsRouter);
-app.use(letterRouter);
-app.use(deepDiveRouter);
-app.use(excerptRouter);
-app.use(favoriteRouter);
-app.use(followRouter);
-app.use(messagesRouter);
-
-app.all(/.*/, (req, res) => {
-  res.status(404).json({ message: "Route does not exist" });
-});
-
-// SOCKET CHAT
-
-io.on("connection", (socket) => {
-  let users = [];
-  const { username } = socket.handshake.query;
-
-  socket.username = username;
-  socket.join("chatRoom");
-  const clients = socket.adapter.rooms.get("chatRoom");
-  console.log("in room :", clients);
-
-  for (const clientId of clients) {
-    const clientSocket = io.sockets.sockets.get(clientId);
-    users.push({ name: clientSocket.username, id: clientSocket.id });
+// -------- Import routes (robuste: si une route crash, tu le vois direct)
+function safeUse(router, name = "router") {
+  try {
+    app.use(router);
+    console.log(`✅ Mounted ${name}`);
+  } catch (e) {
+    console.error(`❌ Failed to mount ${name}:`, e.message);
+    throw e; // si un router a un require cassé, on préfère fail + logs
   }
-  //
+}
 
-  console.log("USERS :", users);
+try {
+  safeUse(require("./routes/authentification"), "authentification");
+  safeUse(require("./routes/user"), "user");
+  safeUse(require("./routes/book"), "book");
+  safeUse(require("./routes/reviews"), "reviews");
+  safeUse(require("./routes/letter"), "letter");
+  safeUse(require("./routes/deepDive"), "deepDive");
+  safeUse(require("./routes/excerpt"), "excerpt");
+  safeUse(require("./routes/favorite"), "favorite");
+  safeUse(require("./routes/follow"), "follow");
+  safeUse(require("./routes/messages"), "messages");
+} catch (e) {
+  // Si on arrive ici: un require/route a cassé au boot => c'est EXACTEMENT ce qui donne "no healthy upstream"
+  console.error("❌ Boot failed while mounting routes:", e.message);
+  // on laisse crash pour que la plateforme affiche les logs (sinon upstream reste dead sans explication)
+  process.exit(1);
+}
 
-  io.emit("hello", "connected");
+app.get("/", (req, res) => res.json({ message: "We are in !" }));
 
-  // when the client emits 'add user', this listens and executes
-  socket.on("add user", () => {
-    socket.emit("login", { users: users, username: username });
-    // echo globally (all clients) that a person has connected
-    socket.broadcast.emit("user joined", `${username} is connected`);
-  });
+// 404
+app.all(/.*/, (req, res) => res.status(404).json({ message: "Route does not exist" }));
 
-  // when the client emits 'new message', this listens and executes
-  socket.on("new message", (message) => {
-    console.log("MSG :", message);
-    // we tell the client to execute 'new message'
-    socket.broadcast.emit("new message", message);
-  });
+// -------- Server + Socket.io (optionnel)
+const server = http.createServer(app);
 
-  // when the client emits 'typing', we broadcast it to others
-  socket.on("typing", () => {
-    socket.broadcast.emit("typing", {
-      username: username,
+let io;
+try {
+  io = require("socket.io")(server, { cors: { origin: "*" } });
+
+  io.on("connection", (socket) => {
+    const { username } = socket.handshake.query || {};
+    socket.username = username || "anonymous";
+    socket.join("chatRoom");
+
+    socket.emit("hello", "connected");
+
+    socket.on("add user", () => {
+      socket.emit("login", { username: socket.username });
+      socket.broadcast.emit("user joined", `${socket.username} is connected`);
+    });
+
+    socket.on("new message", (message) => {
+      socket.broadcast.emit("new message", message);
+    });
+
+    socket.on("typing", () => socket.broadcast.emit("typing", { username: socket.username }));
+    socket.on("stop typing", () => socket.broadcast.emit("stop typing", { username: socket.username }));
+
+    socket.on("disconnect", () => {
+      socket.broadcast.emit("user left", `${socket.username} disconnected`);
     });
   });
+} catch (e) {
+  console.error("⚠️ Socket.io init failed (continuing without WS):", e.message);
+}
 
-  // when the client emits 'stop typing', we broadcast it to others
-  socket.on("stop typing", () => {
-    socket.broadcast.emit("stop typing", {
-      username: username,
+// -------- Mongo connect (robuste)
+async function connectMongo() {
+  const uri = process.env.MONGODB_URI;
+  if (!uri) {
+    console.error("❌ MONGODB_URI missing");
+    mongoReady = false;
+    return;
+  }
+
+  try {
+    await mongoose.connect(uri, {
+      serverSelectionTimeoutMS: 8000,
     });
-  });
+    mongoReady = true;
+    console.log("✅ Mongo connected");
+  } catch (e) {
+    mongoReady = false;
+    console.error("❌ Mongo connect error:", e.message);
+    // IMPORTANT: on ne kill pas le server. /ready renverra 503.
+  }
+}
 
-  // when the user disconnects.. perform this
-  socket.on("disconnect", () => {
-    const clients = socket.adapter.rooms.get("chatRoom");
-    if (clients) {
-      for (const clientId of clients) {
-        const clientSocket = io.sockets.sockets.get(clientId);
-        users.push({ name: clientSocket.username, id: clientSocket.id });
-      }
-    }
-    socket.broadcast.emit("user left", `${username} disconnected`);
-  });
+// -------- Start
+const PORT = Number(process.env.PORT) || 8080; // ✅ 8080 par défaut en cloud/proxy
+server.listen(PORT, "0.0.0.0", () => {
+  console.log("🚀 Server listening on", PORT);
 });
 
-// SERVER
 
-server.listen(process.env.PORT, () => {
-  console.log("Server started 🚀");
+// -------- Process guards (SUPER IMPORTANT)
+process.on("unhandledRejection", (reason) => {
+  console.error("❌ unhandledRejection:", reason);
+});
+
+process.on("uncaughtException", (err) => {
+  console.error("❌ uncaughtException:", err);
+  process.exit(1);
 });

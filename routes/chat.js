@@ -1,98 +1,120 @@
 const express = require("express");
-const router = express.Router();
+require("dotenv").config();
+const mongoose = require("mongoose");
+const cloudinary = require("cloudinary").v2;
+const cors = require("cors");
 
-const isAuthenticated = require("../middleware/isAuthenticated");
-const Conversation = require("../models/Conversation");
-const Message = require("../models/Message");
+const app = express();
+app.use(cors());
+app.use(express.json());
+const server = require("http").createServer(app); // création du type de seveur ici pour socketIO
+const io = require("socket.io")(server, { cors: { origin: "*" } }); // initialisation de socketIO en lui précisant quel server utiliser
 
-const normalizeMembers = (a, b) => [a, b].map((x) => x.trim()).sort();
+// IMPORT DES ROUTES
+const authentificationRouter = require("./routes/authentification");
+const userRouter = require("./routes/user");
+const bookRouter = require("./routes/book");
+const reviewsRouter = require("./routes/reviews");
+const letterRouter = require("./routes/letter");
+const deepDiveRouter = require("./routes/deepDive");
+const excerptRouter = require("./routes/excerpt");
+const favoriteRouter = require("./routes/favorite");
+const followRouter = require("./routes/follow");
+const messagesRouter = require("./routes/messages");
 
-// GET conversations for current user
-router.get("/conversations", isAuthenticated, async (req, res) => {
-  try {
-    // selon ton User model: account.username
-    const me = req.user.account?.username;
-    const convs = await Conversation.find({ members: me }).sort({
-      lastMessageAt: -1,
-      updatedAt: -1,
+mongoose.connect(process.env.MONGODB_URI);
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+app.get("/", (req, res) => {
+  res.json({ message: "We are in !" });
+});
+
+// ROUTES
+
+app.use(authentificationRouter);
+app.use(userRouter);
+app.use(bookRouter);
+app.use(reviewsRouter);
+app.use(letterRouter);
+app.use(deepDiveRouter);
+app.use(excerptRouter);
+app.use(favoriteRouter);
+app.use(followRouter);
+app.use(messagesRouter);
+
+app.all(/.*/, (req, res) => {
+  res.status(404).json({ message: "Route does not exist" });
+});
+
+// SOCKET CHAT
+
+io.on("connection", (socket) => {
+  let users = [];
+  const { username } = socket.handshake.query;
+
+  socket.username = username;
+  socket.join("chatRoom");
+  const clients = socket.adapter.rooms.get("chatRoom");
+  console.log("in room :", clients);
+
+  for (const clientId of clients) {
+    const clientSocket = io.sockets.sockets.get(clientId);
+    users.push({ name: clientSocket.username, id: clientSocket.id });
+  }
+  //
+
+  console.log("USERS :", users);
+
+  io.emit("hello", "connected");
+
+  // when the client emits 'add user', this listens and executes
+  socket.on("add user", () => {
+    socket.emit("login", { users: users, username: username });
+    // echo globally (all clients) that a person has connected
+    socket.broadcast.emit("user joined", `${username} is connected`);
+  });
+
+  // when the client emits 'new message', this listens and executes
+  socket.on("new message", (message) => {
+    console.log("MSG :", message);
+    // we tell the client to execute 'new message'
+    socket.broadcast.emit("new message", message);
+  });
+
+  // when the client emits 'typing', we broadcast it to others
+  socket.on("typing", () => {
+    socket.broadcast.emit("typing", {
+      username: username,
     });
-    res.json(convs);
-  } catch (e) {
-    res.status(500).json({ message: e.message });
-  }
-});
+  });
 
-// CREATE (or return existing) conversation with another user
-router.post("/conversations", isAuthenticated, async (req, res) => {
-  try {
-    const me = req.user.account?.username;
-    const { otherUsername } = req.body;
-
-    if (!otherUsername || otherUsername === me) {
-      return res.status(400).json({ message: "Invalid otherUsername" });
-    }
-
-    const members = normalizeMembers(me, otherUsername);
-
-    const conv = await Conversation.findOneAndUpdate(
-      { members },
-      { $setOnInsert: { members, lastMessage: "", lastMessageAt: null } },
-      { new: true, upsert: true }
-    );
-
-    res.status(201).json(conv);
-  } catch (e) {
-    res.status(500).json({ message: e.message });
-  }
-});
-
-// GET messages of a conversation
-router.get("/conversations/:id/messages", isAuthenticated, async (req, res) => {
-  try {
-    const me = req.user.account?.username;
-    const conv = await Conversation.findById(req.params.id);
-    if (!conv) return res.status(404).json({ message: "Conversation not found" });
-
-    if (!conv.members.includes(me)) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-
-    const msgs = await Message.find({ conversationId: conv._id }).sort({ createdAt: 1 });
-    res.json(msgs);
-  } catch (e) {
-    res.status(500).json({ message: e.message });
-  }
-});
-
-// POST message in a conversation
-router.post("/conversations/:id/messages", isAuthenticated, async (req, res) => {
-  try {
-    const me = req.user.account?.username;
-    const { text } = req.body;
-
-    if (!text?.trim()) return res.status(400).json({ message: "Missing text" });
-
-    const conv = await Conversation.findById(req.params.id);
-    if (!conv) return res.status(404).json({ message: "Conversation not found" });
-
-    if (!conv.members.includes(me)) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-
-    const msg = await Message.create({
-      conversationId: conv._id,
-      senderUsername: me,
-      text: text.trim(),
+  // when the client emits 'stop typing', we broadcast it to others
+  socket.on("stop typing", () => {
+    socket.broadcast.emit("stop typing", {
+      username: username,
     });
+  });
 
-    conv.lastMessage = msg.text;
-    conv.lastMessageAt = msg.createdAt;
-    await conv.save();
-
-    res.status(201).json(msg);
-  } catch (e) {
-    res.status(500).json({ message: e.message });
-  }
+  // when the user disconnects.. perform this
+  socket.on("disconnect", () => {
+    const clients = socket.adapter.rooms.get("chatRoom");
+    if (clients) {
+      for (const clientId of clients) {
+        const clientSocket = io.sockets.sockets.get(clientId);
+        users.push({ name: clientSocket.username, id: clientSocket.id });
+      }
+    }
+    socket.broadcast.emit("user left", `${username} disconnected`);
+  });
 });
 
-module.exports = router;
+// SERVER
+
+server.listen(process.env.PORT, () => {
+  console.log("Server started 🚀");
+});
