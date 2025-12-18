@@ -134,9 +134,7 @@ router.put("/user/:id", isAuthenticated, isPermitted, async (req, res) => {
 
     if (firstBookTitle) userUpdate.favBooks.firstBook.title = firstBookTitle;
 
-    if (firstBookTitle) userUpdate.favBooks.firstBook.title = firstBookTitle;
-
-    if (secondBookTitle) userUpdate.favBooks.secondBook.title = firstBookTitle;
+    if (secondBookTitle) userUpdate.favBooks.secondBook.title = secondBookTitle;
 
     if (firstBookAuthor)
       userUpdate.favBooks.firstBook.author_name = firstBookAuthor;
@@ -154,7 +152,7 @@ router.put("/user/:id", isAuthenticated, isPermitted, async (req, res) => {
 
     if (genre) userUpdate.genre = genre;
 
-    if (country) userUpdate.country = genre;
+    if (country) userUpdate.country = country;
 
     if (city) userUpdate.city = city;
 
