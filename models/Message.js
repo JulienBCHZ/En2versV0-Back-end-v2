@@ -1,38 +1,12 @@
-const express = require("express");
-const router = express.Router();
-const Message = require("../models/Message");
-const isAuthenticated = require("../middleware/isAuthenticated");
+const mongoose = require("mongoose");
 
-// CREATE MESSAGE
-router.post("/messages", isAuthenticated, async (req, res) => {
-  const { newMessage, username } = req.body;
+const messageSchema = new mongoose.Schema(
+  {
+    senderUsername: { type: String, required: true },
+    text: { type: String, trim: true, maxlength: 2000 },
+    image: { type: String },
+  },
+  { timestamps: true }
+);
 
-  if (!newMessage || !username) {
-    return res.status(400).json({ message: "Missing message or username" });
-  }
-
-  try {
-    const msg = new Message({
-      senderUsername: username,
-      text: newMessage,
-    });
-
-    await msg.save();
-    res.status(201).json(msg);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
-// GET ALL MESSAGES
-router.get("/messages/all", isAuthenticated, async (req, res) => {
-  try {
-    const messages = await Message.find().sort({ createdAt: 1 });
-    res.json(messages);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
-// ⚠️ UN SEUL EXPORT
-module.exports = router;
+module.exports = mongoose.model("Message", messageSchema);
