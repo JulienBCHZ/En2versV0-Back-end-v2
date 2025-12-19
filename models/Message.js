@@ -2,9 +2,9 @@ const mongoose = require("mongoose");
 
 const messageSchema = new mongoose.Schema(
   {
-    senderUsername: { type: String, required: true },
-    text: { type: String, trim: true, maxlength: 2000 },
-    image: { type: String },
+    fromUsername: { type: String, required: true, index: true },
+    toUsername: { type: String, required: true, index: true },
+    text: { type: String, trim: true, maxlength: 2000, required: true },
   },
   { timestamps: true }
 );
